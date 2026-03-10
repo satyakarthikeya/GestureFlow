@@ -108,36 +108,46 @@ class GestureClassifier:
     ) -> str:
         """Identify the highest-priority gesture present."""
         threshold = HCIConfig.FINGER_EXTENSION_THRESHOLD
+        states = LandmarkUtils.get_all_finger_states(landmarks, handedness, threshold)
+
+        has_thumb = states["thumb"]
+        has_index = states["index"]
+        has_middle = states["middle"]
+        has_ring = states["ring"]
+        has_pinky = states["pinky"]
 
         # 1. Fist (all curled)
-        if LandmarkUtils.is_fist(landmarks, handedness, threshold):
+        if not any(states.values()):
             return "fist"
 
         # 2. Rock-on (index + pinky extended)
-        if LandmarkUtils.is_rock_on(landmarks, handedness, threshold):
+        if has_index and has_pinky and not has_middle and not has_ring:
             return "rock_on"
 
         # 3. Thumbs up
-        if LandmarkUtils.is_thumbs_up(landmarks, handedness, threshold):
-            return "thumbs_up"
+        if has_thumb and not any([has_index, has_middle, has_ring, has_pinky]):
+            # Thumb tip must be above thumb MCP (pointing up)
+            if landmarks[LandmarkUtils.THUMB_TIP][1] < landmarks[LandmarkUtils.THUMB_MCP][1] - 0.02:
+                return "thumbs_up"
 
         # 4. Thumbs down
-        if LandmarkUtils.is_thumbs_down(landmarks, handedness, threshold):
-            return "thumbs_down"
+        if has_thumb and not any([has_index, has_middle, has_ring, has_pinky]):
+            # Thumb tip must be below thumb MCP (pointing down)
+            if landmarks[LandmarkUtils.THUMB_TIP][1] > landmarks[LandmarkUtils.THUMB_MCP][1] + 0.02:
+                return "thumbs_down"
 
         # 5-8. Count-based gestures (no thumb)
-        states = LandmarkUtils.get_all_finger_states(landmarks, handedness, threshold)
-        non_thumb = [states["index"], states["middle"], states["ring"], states["pinky"]]
+        non_thumb = [has_index, has_middle, has_ring, has_pinky]
         count = sum(non_thumb)
 
-        if not states["thumb"]:
-            if count == 3 and states["index"] and states["middle"] and states["ring"]:
+        if not has_thumb:
+            if count == 3 and has_index and has_middle and has_ring:
                 return "three_fingers"
             if count == 4:
                 return "four_fingers"
-            if count == 1 and states["index"]:
+            if count == 1 and has_index:
                 return "one_finger"
-            if count == 2 and states["index"] and states["middle"]:
+            if count == 2 and has_index and has_middle:
                 return "two_fingers"
 
         # 9. Open hand (all 5)
