@@ -42,6 +42,14 @@ a = Analysis(
         'PyQt6.QtGui',
         'PyQt6.QtWidgets',
         'PyQt6.sip',
+        # Windows-specific system modules often missed
+        'pythoncom',
+        'pywintypes',
+        'win32api',
+        'win32con',
+        'win32gui',
+        'win32ui',
+        'win32clipboard',
         # matplotlib + dependencies (needed by mediapipe)
         'matplotlib',
         'matplotlib.backends.backend_agg',
