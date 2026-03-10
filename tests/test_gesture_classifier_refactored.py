@@ -1,19 +1,17 @@
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import sys
 
-# Mock all dependencies of GestureClassifier
-sys.modules['core.landmark_utils'] = MagicMock()
-sys.modules['core.hand_tracker'] = MagicMock()
-sys.modules['core.smoothing'] = MagicMock()
-sys.modules['core.coordinate_mapper'] = MagicMock()
-sys.modules['cv2'] = MagicMock()
-sys.modules['numpy'] = MagicMock()
-sys.modules['pyautogui'] = MagicMock()
-sys.modules['screen_brightness_control'] = MagicMock()
-sys.modules['pynput'] = MagicMock()
-sys.modules['pynput.keyboard'] = MagicMock()
+# Mock third-party dependencies required for import but not available/functional in headless CI
+for mod in [
+    'cv2', 'pyautogui', 'screen_brightness_control',
+    'pynput', 'pynput.keyboard', 'pycaw', 'pycaw.pycaw', 'comtypes', 'comtypes.stream',
+    'mediapipe', 'mediapipe.python', 'mediapipe.python.solutions',
+    'mediapipe.python.solutions.hands', 'mediapipe.python.solutions.drawing_utils',
+    'mediapipe.python.solutions.drawing_styles'
+]:
+    sys.modules[mod] = MagicMock()
 
 # Specifically mock LandmarkUtils and its methods
 class MockLandmarkUtils:
@@ -45,15 +43,6 @@ class MockLandmarkUtils:
             states[name] = MockLandmarkUtils.is_finger_extended(landmarks, i, threshold)
         return states
 
-sys.modules['core.landmark_utils'].LandmarkUtils = MockLandmarkUtils
-
-# Mock the controllers
-sys.modules['apps.hci.controllers.brightness'] = MagicMock()
-sys.modules['apps.hci.controllers.cursor'] = MagicMock()
-sys.modules['apps.hci.controllers.media'] = MagicMock()
-sys.modules['apps.hci.controllers.scroll'] = MagicMock()
-sys.modules['apps.hci.controllers.tab_switch'] = MagicMock()
-sys.modules['apps.hci.controllers.volume'] = MagicMock()
 
 from apps.hci.gesture_classifier import GestureClassifier
 
@@ -103,48 +92,50 @@ def get_count_landmarks(count):
         lms[MockLandmarkUtils.FINGER_TIPS[i]] = (0.5, 0.3, 0.0)
     return lms
 
+@pytest.fixture
+def classifier():
+    with patch("apps.hci.gesture_classifier.CursorController"), \
+         patch("apps.hci.gesture_classifier.ScrollController"), \
+         patch("apps.hci.gesture_classifier.VolumeController"), \
+         patch("apps.hci.gesture_classifier.MediaController"), \
+         patch("apps.hci.gesture_classifier.TabSwitchController"), \
+         patch("apps.hci.gesture_classifier.BrightnessController"), \
+         patch("apps.hci.gesture_classifier.LandmarkUtils", MockLandmarkUtils):
+        yield GestureClassifier()
+
 class TestGestureClassifierRefactored:
-    def test_fist(self):
-        classifier = GestureClassifier()
+    def test_fist(self, classifier):
         lms = get_fist_landmarks()
         assert classifier._identify_gesture(lms, "Right") == "fist"
 
-    def test_rock_on(self):
-        classifier = GestureClassifier()
+    def test_rock_on(self, classifier):
         lms = get_rock_on_landmarks()
         assert classifier._identify_gesture(lms, "Right") == "rock_on"
 
-    def test_thumbs_up(self):
-        classifier = GestureClassifier()
+    def test_thumbs_up(self, classifier):
         lms = get_thumbs_up_landmarks()
         assert classifier._identify_gesture(lms, "Right") == "thumbs_up"
 
-    def test_thumbs_down(self):
-        classifier = GestureClassifier()
+    def test_thumbs_down(self, classifier):
         lms = get_thumbs_down_landmarks()
         assert classifier._identify_gesture(lms, "Right") == "thumbs_down"
 
-    def test_one_finger(self):
-        classifier = GestureClassifier()
+    def test_one_finger(self, classifier):
         lms = get_count_landmarks(1)
         assert classifier._identify_gesture(lms, "Right") == "one_finger"
 
-    def test_two_fingers(self):
-        classifier = GestureClassifier()
+    def test_two_fingers(self, classifier):
         lms = get_count_landmarks(2)
         assert classifier._identify_gesture(lms, "Right") == "two_fingers"
 
-    def test_three_fingers(self):
-        classifier = GestureClassifier()
+    def test_three_fingers(self, classifier):
         lms = get_count_landmarks(3)
         assert classifier._identify_gesture(lms, "Right") == "three_fingers"
 
-    def test_four_fingers(self):
-        classifier = GestureClassifier()
+    def test_four_fingers(self, classifier):
         lms = get_count_landmarks(4)
         assert classifier._identify_gesture(lms, "Right") == "four_fingers"
 
-    def test_open_hand(self):
-        classifier = GestureClassifier()
+    def test_open_hand(self, classifier):
         lms = get_open_hand_landmarks()
         assert classifier._identify_gesture(lms, "Right") == "open_hand"

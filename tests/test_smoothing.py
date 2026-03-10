@@ -2,6 +2,19 @@
 
 import math
 import time
+import sys
+from unittest.mock import MagicMock
+
+# Mock third-party dependencies before importing core
+for mod in [
+    'cv2', 'pyautogui', 'screen_brightness_control',
+    'pynput', 'pynput.keyboard', 'pycaw', 'pycaw.pycaw', 'comtypes', 'comtypes.stream',
+    'mediapipe', 'mediapipe.python', 'mediapipe.python.solutions',
+    'mediapipe.python.solutions.hands', 'mediapipe.python.solutions.drawing_utils',
+    'mediapipe.python.solutions.drawing_styles'
+]:
+    if mod not in sys.modules:
+        sys.modules[mod] = MagicMock()
 
 import pytest
 
